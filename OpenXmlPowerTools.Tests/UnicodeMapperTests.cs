@@ -153,5 +153,39 @@ namespace Codeuctivity.Tests
             // characters) should exactly match the output of UnicodeMapper:
             Assert.Equal(p.Value, actual);
         }
+
+        private const string PreserveSpacingXmlString =
+@"<w:document xmlns:w=""http://schemas.openxmlformats.org/wordprocessingml/2006/main"">
+  <w:body>
+    <w:p>
+      <w:r>
+        <w:t xml:space=""preserve"">The following space is retained: </w:t>
+      </w:r>
+      <w:r>
+        <w:t>but this one is not: </w:t>
+      </w:r>
+      <w:r>
+        <w:t xml:space=""preserve"">. Similarly these two lines should have only a space between them: </w:t>
+      </w:r>
+      <w:r>
+        <w:t>
+          Line 1!
+Line 2!
+        </w:t>
+      </w:r>
+    </w:p>
+  </w:body>
+</w:document>";
+
+        [Fact]
+        public void HonorsXmlSpace()
+        {
+            XDocument partDocument = XDocument.Parse(PreserveSpacingXmlString);
+            XElement p = partDocument.Descendants(W.p).Last();
+            string innerText = p.Descendants(W.r)
+                .Select(UnicodeMapper.RunToString)
+                .StringConcatenate();
+            Assert.Equal(@"The following space is retained: but this one is not:. Similarly these two lines should have only a space between them: Line 1! Line 2!", innerText);
+        }
     }
 }
