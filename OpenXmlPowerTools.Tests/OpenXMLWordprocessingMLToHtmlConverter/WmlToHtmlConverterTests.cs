@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Xunit;
 
-namespace Codeuctivity.Tests.OpenXMLWordprocessingMLToHtmlConverter
+namespace Codeuctivity.Tests.OpenXMLWordProcessingMLToHtmlConverter
 {
     public class WmlToHtmlConverterTests
     {
@@ -70,26 +70,26 @@ namespace Codeuctivity.Tests.OpenXMLWordprocessingMLToHtmlConverter
         [InlineData("HC060-Image-with-Hyperlink.docx", 0, false)]
         [InlineData("HC061-Hyperlink-in-Field.docx", 0, false)]
         [InlineData("Tabs.docx", 0, false)]
-        public async Task HC001(string name, int expectedPixeNoise, bool imageSizeMayDiffer)
+        public async Task HC001(string name, int expectedPixelNoise, bool imageSizeMayDiffer)
         {
             var sourceDir = new DirectoryInfo("../../../../TestFiles/");
             var sourceDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
             var settings = new WmlToHtmlConverterSettings(sourceDocx.FullName);
 
             var oxPtConvertedDestHtml = new FileInfo(Path.Combine(TestUtil.TempDir.FullName, sourceDocx.Name.Replace(".docx", "-3-OxPt.html")));
-            await ConvertToHtml(sourceDocx, oxPtConvertedDestHtml, settings, expectedPixeNoise, imageSizeMayDiffer);
+            await ConvertToHtml(sourceDocx, oxPtConvertedDestHtml, settings, expectedPixelNoise, imageSizeMayDiffer);
         }
 
         [Theory]
         [InlineData("HC006-Test-01.docx", 80000)]
-        public async Task HC002_NoCssClasses(string name, int expectedPixeNoise)
+        public async Task HC002_NoCssClasses(string name, int expectedPixelNoise)
         {
             var sourceDir = new DirectoryInfo("../../../../TestFiles/");
             var sourceDocx = new FileInfo(Path.Combine(sourceDir.FullName, name));
             var settings = new WmlToHtmlConverterSettings(sourceDocx.FullName, new ImageHandler(), new TextDummyHandler(), new SymbolHandler(), new BreakHandler(), new FontHandler(), false);
 
             var oxPtConvertedDestHtml = new FileInfo(Path.Combine(TestUtil.TempDir.FullName, sourceDocx.Name.Replace(".docx", "-5-OxPt-No-CSS-Classes.html")));
-            await ConvertToHtml(sourceDocx, oxPtConvertedDestHtml, settings, expectedPixeNoise, false);
+            await ConvertToHtml(sourceDocx, oxPtConvertedDestHtml, settings, expectedPixelNoise, false);
         }
 
         private static async Task ConvertToHtml(FileInfo sourceDocx, FileInfo destFileName, WmlToHtmlConverterSettings settings, int expectedPixeNoise, bool imageSizeMayDiffer)
@@ -141,7 +141,8 @@ namespace Codeuctivity.Tests.OpenXMLWordprocessingMLToHtmlConverter
 
             Assert.True(File.Exists(expectFullPath), $"ExpectReferenceImagePath not found \n{expectFullPath}\n copy over \n{actualFullPath}\n if this is a new test case.");
 
-            if (ImageSharpCompare.ImageSharpCompare.ImagesAreEqual(actualFullPath, expectFullPath))
+            var resizeOption = imageSizeMayDiffer ? ImageSharpCompare.ResizeOption.Resize : ImageSharpCompare.ResizeOption.DontResize;
+            if (ImageSharpCompare.ImageSharpCompare.ImagesAreEqual(actualFullPath, expectFullPath, resizeOption))
             {
                 return;
             }
@@ -151,55 +152,51 @@ namespace Codeuctivity.Tests.OpenXMLWordprocessingMLToHtmlConverter
             var allowedDiffImage = $"{expectFullPath}.diff.{osSpecificDiffFileSuffix}.png";
             var newDiffImage = $"{actualFullPath}.diff.png";
 
-            if (!ImageSharpCompare.ImageSharpCompare.ImagesHaveEqualSize(actualFullPath, expectFullPath))
+            if (!imageSizeMayDiffer && !ImageSharpCompare.ImageSharpCompare.ImagesHaveEqualSize(actualFullPath, expectFullPath))
             {
-                if (imageSizeMayDiffer)
-                {
-                    return;
-                }
-
                 // Uncomment following line to create or update a allowed diff file
                 // File.Copy(actualFullPath, expectFullPath, true);
 
                 SaveToGithubActionsPickupTestresultsDirectory(actualFullPath, expectFullPath);
                 Assert.Fail($"Actual Dimension differs from expected \nExpected {expectFullPath}\ndiffers to actual {actualFullPath} \nReplace {expectFullPath} with the new value.");
             }
-
-            using (var maskImage = ImageSharpCompare.ImageSharpCompare.CalcDiffMaskImage(actualFullPath, expectFullPath))
+            try
             {
-                using var fs = new FileStream(newDiffImage, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                await maskImage.SaveAsync(fs, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
-            }
-
-            // Uncomment following line to create or update a allowed diff file
-            //File.Copy(actualFullPath, allowedDiffImage, true);
-
-            if (File.Exists(allowedDiffImage))
-            {
-                if (!ImageSharpCompare.ImageSharpCompare.ImagesHaveEqualSize(actualFullPath, allowedDiffImage))
+                using (var maskImage = ImageSharpCompare.ImageSharpCompare.CalcDiffMaskImage(actualFullPath, expectFullPath, ImageSharpCompare.ResizeOption.Resize))
                 {
-                    Assert.True(false, $"AllowedDiffImage Dimension differs from allowed \nReplace {allowedDiffImage} with {actualFullPath}.");
+                    using var fs = new FileStream(newDiffImage, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+                    await maskImage.SaveAsync(fs, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
                 }
 
-                var resultWithAllowedDiff = ImageSharpCompare.ImageSharpCompare.CalcDiff(actualFullPath, expectFullPath, allowedDiffImage);
+                // Uncomment following line to create or update a allowed diff file
+                //File.Copy(actualFullPath, allowedDiffImage, true);
 
-                var pixelErrorCountAboveExpectedWithDiff = resultWithAllowedDiff.PixelErrorCount > allowedPixelErrorCount;
-                if (pixelErrorCountAboveExpectedWithDiff)
+                if (File.Exists(allowedDiffImage))
+                {
+                    var resultWithAllowedDiff = ImageSharpCompare.ImageSharpCompare.CalcDiff(actualFullPath, expectFullPath, allowedDiffImage, resizeOption);
+
+                    var pixelErrorCountAboveExpectedWithDiff = resultWithAllowedDiff.PixelErrorCount > allowedPixelErrorCount;
+                    if (pixelErrorCountAboveExpectedWithDiff)
+                    {
+                        SaveToGithubActionsPickupTestresultsDirectory(actualFullPath, expectFullPath);
+                        Assert.Fail($"Expected PixelErrorCount beyond {allowedPixelErrorCount} but was {resultWithAllowedDiff.PixelErrorCount}\nExpected {expectFullPath}\ndiffers to actual {actualFullPath}\n diff is {newDiffImage}\n");
+                    }
+                    return;
+                }
+
+                var result = ImageSharpCompare.ImageSharpCompare.CalcDiff(actualFullPath, expectFullPath, resizeOption);
+
+                var pixelErrorCountAboveExpected = result.PixelErrorCount > allowedPixelErrorCount;
+                if (pixelErrorCountAboveExpected)
                 {
                     SaveToGithubActionsPickupTestresultsDirectory(actualFullPath, expectFullPath);
-                    Assert.Fail($"Expected PixelErrorCount beyond {allowedPixelErrorCount} but was {resultWithAllowedDiff.PixelErrorCount}\nExpected {expectFullPath}\ndiffers to actual {actualFullPath}\n diff is {newDiffImage}\n");
+
+                    Assert.Fail($"Expected PixelErrorCount beyond {allowedPixelErrorCount} but was {result.PixelErrorCount}\nExpected {expectFullPath}\ndiffers to actual {actualFullPath}\n Diff is {newDiffImage} \nReplace {actualFullPath} with the new value or store the diff as {allowedDiffImage}.");
                 }
-                return;
             }
-
-            var result = ImageSharpCompare.ImageSharpCompare.CalcDiff(actualFullPath, expectFullPath);
-
-            var pixelErrorCountAboveExpected = result.PixelErrorCount > allowedPixelErrorCount;
-            if (pixelErrorCountAboveExpected)
+            catch
             {
                 SaveToGithubActionsPickupTestresultsDirectory(actualFullPath, expectFullPath);
-
-                Assert.Fail($"Expected PixelErrorCount beyond {allowedPixelErrorCount} but was {result.PixelErrorCount}\nExpected {expectFullPath}\ndiffers to actual {actualFullPath}\n Diff is {newDiffImage} \nReplace {actualFullPath} with the new value or store the diff as {allowedDiffImage}.");
             }
         }
 

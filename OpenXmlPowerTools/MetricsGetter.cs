@@ -113,7 +113,7 @@ namespace Codeuctivity.OpenXmlPowerTools
             {
                 var font = new SixLabors.Fonts.Font(ff, (float)sz / 2f, fs);
                 var textOptions = new SixLabors.Fonts.TextOptions(font);
-                var size = SixLabors.Fonts.TextMeasurer.Measure(text,textOptions );
+                var size = SixLabors.Fonts.TextMeasurer.Measure(text, textOptions);
 
                 return (int)size.Width;
             }
@@ -189,9 +189,7 @@ namespace Codeuctivity.OpenXmlPowerTools
 
         private static XElement RetrieveContentTypeList(OpenXmlPackage oxPkg)
         {
-            var pkg = oxPkg.Package;
-
-            var nonRelationshipParts = pkg.GetParts().Cast<ZipPackagePart>().Where(p => p.ContentType != "application/vnd.openxmlformats-package.relationships+xml");
+            var nonRelationshipParts = oxPkg.GetAllParts().Where(p => p.ContentType != "application/vnd.openxmlformats-package.relationships+xml");
             var contentTypes = nonRelationshipParts
                 .Select(p => p.ContentType)
                 .OrderBy(t => t)
@@ -203,9 +201,7 @@ namespace Codeuctivity.OpenXmlPowerTools
 
         private static XElement RetrieveNamespaceList(OpenXmlPackage oxPkg)
         {
-            var pkg = oxPkg.Package;
-
-            var nonRelationshipParts = pkg.GetParts().Cast<ZipPackagePart>().Where(p => p.ContentType != "application/vnd.openxmlformats-package.relationships+xml");
+            var nonRelationshipParts = oxPkg.GetAllParts().Where(p => p.ContentType != "application/vnd.openxmlformats-package.relationships+xml");
             var xmlParts = nonRelationshipParts
                 .Where(p => p.ContentType.ToLower().EndsWith("xml"));
 

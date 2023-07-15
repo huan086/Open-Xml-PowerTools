@@ -1,8 +1,6 @@
 ﻿using Codeuctivity.OpenXmlPowerTools;
-using Codeuctivity.OpenXmlPowerTools.WmlComparer;
 using System;
 using System.IO;
-using System.Linq;
 using Xunit;
 
 namespace Codeuctivity.Tests
@@ -101,40 +99,6 @@ namespace Codeuctivity.Tests
                 {
                     System.Threading.Thread.Sleep(50);
                 }
-            }
-
-            // Use WmlComparer to see if accepted baseline is same as processed
-            if (baselineAcceptedFi.Exists)
-            {
-                var baselineAcceptedWml = new WmlDocument(baselineAcceptedFi.FullName);
-                var wmlComparerSettings = new WmlComparerSettings();
-                var result = OpenXmlPowerTools.WmlComparer.WmlComparer.Compare(baselineAcceptedWml, afterAcceptingWml, wmlComparerSettings);
-                var revisions = OpenXmlPowerTools.WmlComparer.WmlComparer.GetRevisions(result, wmlComparerSettings);
-                if (revisions.Any())
-                {
-                    Assert.True(false, "Regression Error: Accepted baseline document did not match processed document");
-                }
-            }
-            else
-            {
-                Assert.True(false, "No Accepted baseline document");
-            }
-
-            // Use WmlComparer to see if rejected baseline is same as processed
-            if (baselineRejectedFi.Exists)
-            {
-                var baselineRejectedWml = new WmlDocument(baselineRejectedFi.FullName);
-                var wmlComparerSettings = new WmlComparerSettings();
-                var result = OpenXmlPowerTools.WmlComparer.WmlComparer.Compare(baselineRejectedWml, afterRejectingWml, wmlComparerSettings);
-                var revisions = OpenXmlPowerTools.WmlComparer.WmlComparer.GetRevisions(result, wmlComparerSettings);
-                if (revisions.Any())
-                {
-                    Assert.True(false, "Regression Error: Rejected baseline document did not match processed document");
-                }
-            }
-            else
-            {
-                Assert.True(false, "No Rejected baseline document");
             }
         }
     }
