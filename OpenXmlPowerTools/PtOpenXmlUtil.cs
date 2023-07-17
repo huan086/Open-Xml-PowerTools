@@ -5909,6 +5909,8 @@ listSeparator
         public static readonly XName title = xhtml + "title";
         public static readonly XName tr = xhtml + "tr";
         public static readonly XName u = xhtml + "u";
+        public static readonly XName ul = xhtml + "ul";
+        public static readonly XName li = xhtml + "li";
     }
 
     public static class XhtmlNoNamespace

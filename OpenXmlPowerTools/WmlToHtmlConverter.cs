@@ -366,6 +366,55 @@ namespace OpenXmlPowerTools
             }
         }
 
+        private static IEnumerable<object> ListAwareConvertToHtmlTransform(WordprocessingDocument wordDoc,
+            WmlToHtmlConverterSettings settings, IEnumerable<XNode> nodes,
+            bool suppressTrailingWhiteSpace,
+            decimal currentMarginLeft)
+        {
+            var htmlChildren = new List<object>();
+            List<XElement> elementChildren = nodes.OfType<XElement>().ToList();
+            for (int elementIndex = 0; elementIndex < elementChildren.Count; elementIndex += 1)
+            {
+                XElement elementChild = elementChildren[elementIndex];
+                var htmlStructure = (string)elementChild.Attribute(PtOpenXml.HtmlStructure);
+                if (htmlStructure == "ul")
+                {
+                    var listId = (string)elementChild.Attribute(PtOpenXml.AbstractNumId);
+                    var htmlListItems = new List<object>();
+                    do
+                    {
+                        var listItemBody = ConvertToHtmlTransform(wordDoc, settings, elementChild, suppressTrailingWhiteSpace && elementIndex != elementChildren.Count - 1, currentMarginLeft);
+                        var listItemElement = listItemBody as XElement;
+                        var listItemChildren = listItemElement.Elements().ToList();
+                        for (int listItemIndex = 0; listItemIndex < listItemChildren.Count; listItemIndex += 1)
+                        {
+                            var listItemChild = listItemChildren[listItemIndex];
+                            if (listItemChild.Attribute("data-pt-list-item-run") != null)
+                            {
+                                listItemChild.Remove();
+                            }
+                        }
+
+                        htmlListItems.Add(new XElement(Xhtml.li, listItemBody));
+                        elementIndex += 1;
+                    }
+                    while (elementIndex < elementChildren.Count
+                        && ((elementChild = elementChildren[elementIndex]) != null)
+                        && (string)elementChild.Attribute(PtOpenXml.HtmlStructure) == "ul"
+                        && (string)elementChild.Attribute(PtOpenXml.AbstractNumId) == listId);
+
+                    htmlChildren.Add(new XElement(Xhtml.ul, htmlListItems));
+                    elementIndex -= 1;
+                    continue;
+                }
+
+                var htmlChild = ConvertToHtmlTransform(wordDoc, settings, elementChild, suppressTrailingWhiteSpace && elementIndex != elementChildren.Count - 1, currentMarginLeft);
+                htmlChildren.Add(htmlChild);
+            }
+
+            return htmlChildren;
+        }
+
         private static object ConvertToHtmlTransform(WordprocessingDocument wordDoc,
             WmlToHtmlConverterSettings settings, XNode node,
             bool suppressTrailingWhiteSpace,
@@ -1401,13 +1450,16 @@ namespace OpenXmlPowerTools
             XEntity runEndMark;
             DetermineRunMarks(run, rPr, style, out runStartMark, out runEndMark);
 
-            if (style.Any() || langAttribute != null || runStartMark != null)
+            var listItemRun = (string)run.Attribute(PtOpenXml.ListItemRun);
+            var listItemRunAttribute = !string.IsNullOrEmpty(listItemRun) ? new XAttribute("data-pt-list-item-run", listItemRun) : null;
+            if (style.Any() || langAttribute != null || runStartMark != null || listItemRunAttribute != null)
             {
                 style.AddIfMissing("margin", "0");
                 style.AddIfMissing("padding", "0");
                 var xe = new XElement(Xhtml.span,
                     langAttribute,
                     runStartMark,
+                    listItemRunAttribute,
                     content,
                     runEndMark);
 
@@ -2600,9 +2652,8 @@ namespace OpenXmlPowerTools
                 .Select(g =>
                 {
                     if (g.Key == "")
-                        return g.Select(e => ConvertToHtmlTransform(wordDoc, settings, e, false, currentMarginLeft));
-                    var last = g.Count() - 1;
-                    return g.Select((e, i) => ConvertToHtmlTransform(wordDoc, settings, e, i != last, currentMarginLeft));
+                        return ListAwareConvertToHtmlTransform(wordDoc, settings, g, false, currentMarginLeft);
+                    return ListAwareConvertToHtmlTransform(wordDoc, settings, g, true, currentMarginLeft);
                 });
             return (IEnumerable<object>)newContent;
         }
