@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -366,53 +366,99 @@ namespace OpenXmlPowerTools
             }
         }
 
-        private static IEnumerable<object> ListAwareConvertToHtmlTransform(WordprocessingDocument wordDoc,
+        private static object ListAwareConvertToHtmlTransform(WordprocessingDocument wordDoc,
             WmlToHtmlConverterSettings settings, IEnumerable<XNode> nodes,
             bool suppressTrailingWhiteSpace,
             decimal currentMarginLeft)
         {
-            var htmlChildren = new List<object>();
-            List<XElement> elementChildren = nodes.OfType<XElement>().ToList();
-            for (int elementIndex = 0; elementIndex < elementChildren.Count; elementIndex += 1)
+            List<XElement> elements = nodes.OfType<XElement>().ToList();
+            var htmlNestedListItems = new List<(string ListType, int Start, int CurrentNumber, List<object> ListItems)>();
+            int previousLevels = 0;
+            int currentLevels = 0;
+            int currentNumber = 0;
+            int currentStart = 0;
+
+            for (int elementIndex = 0; elementIndex < elements.Count; elementIndex += 1)
             {
-                XElement elementChild = elementChildren[elementIndex];
-                var htmlStructure = (string)elementChild.Attribute(PtOpenXml.HtmlStructure);
-                if (htmlStructure == "ul")
+                XElement element = elements[elementIndex];
+                var listType = (string)element.Attribute(PtOpenXml.HtmlStructure);
+
+                var elementHtml = ConvertToHtmlTransform(wordDoc, settings, element, suppressTrailingWhiteSpace && elementIndex != elements.Count - 1, currentMarginLeft);
+                var elementXml = elementHtml as XElement;
+                if (elementXml == null)
                 {
-                    var listId = (string)elementChild.Attribute(PtOpenXml.AbstractNumId);
-                    var htmlListItems = new List<object>();
-                    do
-                    {
-                        var listItemBody = ConvertToHtmlTransform(wordDoc, settings, elementChild, suppressTrailingWhiteSpace && elementIndex != elementChildren.Count - 1, currentMarginLeft);
-                        var listItemElement = listItemBody as XElement;
-                        var listItemChildren = listItemElement.Elements().ToList();
-                        for (int listItemIndex = 0; listItemIndex < listItemChildren.Count; listItemIndex += 1)
-                        {
-                            var listItemChild = listItemChildren[listItemIndex];
-                            if (listItemChild.Attribute("data-pt-list-item-run") != null)
-                            {
-                                listItemChild.Remove();
-                            }
-                        }
-
-                        htmlListItems.Add(new XElement(Xhtml.li, listItemBody));
-                        elementIndex += 1;
-                    }
-                    while (elementIndex < elementChildren.Count
-                        && ((elementChild = elementChildren[elementIndex]) != null)
-                        && (string)elementChild.Attribute(PtOpenXml.HtmlStructure) == "ul"
-                        && (string)elementChild.Attribute(PtOpenXml.AbstractNumId) == listId);
-
-                    htmlChildren.Add(new XElement(Xhtml.ul, htmlListItems));
-                    elementIndex -= 1;
+                    // TODO: determine if we need to handle this
                     continue;
                 }
 
-                var htmlChild = ConvertToHtmlTransform(wordDoc, settings, elementChild, suppressTrailingWhiteSpace && elementIndex != elementChildren.Count - 1, currentMarginLeft);
-                htmlChildren.Add(htmlChild);
+                // Each paragraph, contains 1 or more children with data-pt-list-item-run attribute that indicates the nested numbering.
+                var children = elementXml.Elements().ToList();
+                bool foundItemRun = false;
+                List<object> appendToList = null;
+                for (int childIndex = 0; childIndex < children.Count; childIndex += 1)
+                {
+                    var child = children[childIndex];
+                    var itemRun = (string)child.Attribute("data-pt-list-item-run");
+                    if (itemRun == null)
+                    {
+                        continue;
+                    }
+
+                    if (!foundItemRun)
+                    {
+                        foundItemRun = true;
+                        string[] levels = itemRun.Split('.');
+                        currentLevels = levels.Length;
+                        for (int levelIndex = previousLevels - 1; levelIndex >= currentLevels && levelIndex > 0; levelIndex -= 1)
+                        {
+                            // We are now at a shallower nesting, add the deeper list to the shallower list as content.
+                            // Note that this creates invalid HTML where a list is directly nested inside another list without a list item "li" tag,
+                            // but Microsoft Word HTML export has the same behaviour.
+                            var (_, _, _, shallowList) = htmlNestedListItems[levelIndex - 1];
+                            var (deepListType, deepStart, _, deepList) = htmlNestedListItems[levelIndex];
+                            var startAttribute = deepListType == "ol" ? new XAttribute("start", deepStart) : null;
+                            shallowList.Add(new XElement(Xhtml.xhtml + deepListType, startAttribute, deepList));
+                            htmlNestedListItems.RemoveAt(levelIndex);
+                        }
+
+                        for (int levelIndex = 0; levelIndex < currentLevels; levelIndex += 1)
+                        {
+                            // Create the level in htmlNestedListItems
+                            int.TryParse(levels[levelIndex], out int start);
+
+                            // Current number will be set to the one from the deepest level
+                            currentNumber = start;
+                            if (levelIndex >= htmlNestedListItems.Count)
+                            {
+                                htmlNestedListItems.Add((listType, start, start, new List<object>()));
+                            }
+                        }
+
+                        (_, currentStart, _, appendToList) = htmlNestedListItems[currentLevels - 1];
+                    }
+
+                    child.Remove();
+                }
+
+                if (appendToList != null)
+                {
+                    appendToList.Add(new XElement(Xhtml.li, elementHtml));
+                    htmlNestedListItems[currentLevels - 1] = (listType, currentStart, currentNumber, appendToList);
+                    previousLevels = currentLevels;
+                }
             }
 
-            return htmlChildren;
+            var rootList = new List<object>();
+            for (int levelIndex = htmlNestedListItems.Count - 1; levelIndex >= 0; levelIndex -= 1)
+            {
+                var list = levelIndex == 0 ? rootList : htmlNestedListItems[levelIndex - 1].ListItems;
+                var (deepListType, deepStart, _, deepList) = htmlNestedListItems[levelIndex];
+                var startAttribute = deepListType == "ol" ? new XAttribute("start", deepStart) : null;
+                list.Add(new XElement(Xhtml.xhtml + deepListType, startAttribute, deepList));
+                htmlNestedListItems.RemoveAt(levelIndex);
+            }
+
+            return rootList.Count > 0 ? rootList[0] : null;
         }
 
         private static object ConvertToHtmlTransform(WordprocessingDocument wordDoc,
@@ -2669,7 +2715,8 @@ namespace OpenXmlPowerTools
                 .Select(g =>
                 {
                     if (g.Key == "")
-                        return ListAwareConvertToHtmlTransform(wordDoc, settings, g, false, currentMarginLeft);
+                        return g.Select(e => ConvertToHtmlTransform(wordDoc, settings, e, false, currentMarginLeft));
+
                     return ListAwareConvertToHtmlTransform(wordDoc, settings, g, true, currentMarginLeft);
                 });
             return (IEnumerable<object>)newContent;
