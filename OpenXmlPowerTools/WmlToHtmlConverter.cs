@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
@@ -756,10 +756,14 @@ namespace OpenXmlPowerTools
             var previousParagraph = element.ElementsBeforeSelf(W.p).LastOrDefault();
             if (HasStyleSeparator(previousParagraph)) return null;
 
-            var elementName = GetParagraphElementName(element, wordDoc);
+            var (elementName, outlineLevel) = GetParagraphElementName(element, wordDoc);
             var isBidi = IsBidi(element);
             var paragraph = (XElement)ConvertParagraph(wordDoc, settings, element, elementName,
                 suppressTrailingWhiteSpace, currentMarginLeft, isBidi);
+            if (outlineLevel > 6)
+            {
+                paragraph.Add(new XAttribute("role", "heading"), new XAttribute("aria-level", outlineLevel));
+            }
 
             // The paragraph conversion might have created empty spans.
             // These can and should be removed because empty spans are
@@ -975,24 +979,26 @@ namespace OpenXmlPowerTools
                 .Any(b => b.Attribute(W.val) == null || b.Attribute(W.val).ToBoolean() == true);
         }
 
-        private static XName GetParagraphElementName(XElement element, WordprocessingDocument wordDoc)
+        private static (XName ElementName, int OutlineLevel) GetParagraphElementName(XElement element, WordprocessingDocument wordDoc)
         {
             var elementName = Xhtml.p;
 
             var styleId = (string)element.Elements(W.pPr).Elements(W.pStyle).Attributes(W.val).FirstOrDefault();
-            if (styleId == null) return elementName;
+            if (styleId == null) return (elementName, 0);
 
             var style = GetStyle(styleId, wordDoc);
-            if (style == null) return elementName;
+            if (style == null) return (elementName, 0);
 
             var outlineLevel =
                 (int?)style.Elements(W.pPr).Elements(W.outlineLvl).Attributes(W.val).FirstOrDefault();
-            if (outlineLevel != null && outlineLevel <= 5)
+            if (outlineLevel != null && outlineLevel < 9)
             {
-                elementName = Xhtml.xhtml + string.Format("h{0}", outlineLevel + 1);
+                var level = outlineLevel.GetValueOrDefault() + 1;
+                elementName = Xhtml.xhtml + string.Format("h{0}", level);
+                return (elementName, level);
             }
 
-            return elementName;
+            return (elementName, 0);
         }
 
         private static XElement GetStyle(string styleId, WordprocessingDocument wordDoc)
