@@ -490,6 +490,12 @@ namespace OpenXmlPowerTools
                 return ProcessHyperlinkToBookmark(wordDoc, settings, element);
             }
 
+            // Transform emojis
+            if (element.Name == MC.AlternateContent)
+            {
+                return ProcessAlternateContent(wordDoc, settings, element);
+            }
+
             // Transform contents of runs.
             if (element.Name == W.r)
             {
@@ -1473,6 +1479,11 @@ namespace OpenXmlPowerTools
                 content = xe;
             }
             return content;
+        }
+
+        private static object ProcessAlternateContent(WordprocessingDocument wordDoc, WmlToHtmlConverterSettings settings, XElement element)
+        {
+            return element.Elements(MC.Fallback).SelectMany(fallback => fallback.Elements().Select(child => ConvertToHtmlTransform(wordDoc, settings, child, false, 0m)));
         }
 
         [SuppressMessage("ReSharper", "FunctionComplexityOverflow")]
