@@ -369,10 +369,11 @@ namespace OpenXmlPowerTools
         private static object ListAwareConvertToHtmlTransform(WordprocessingDocument wordDoc,
             WmlToHtmlConverterSettings settings, IEnumerable<XNode> nodes,
             bool suppressTrailingWhiteSpace,
-            decimal currentMarginLeft)
+            decimal currentMarginLeft,
+            IList<string> htmlNestedListTypes)
         {
             List<XElement> elements = nodes.OfType<XElement>().ToList();
-            var htmlNestedListItems = new List<(string ListType, int Start, int CurrentNumber, List<object> ListItems)>();
+            var htmlNestedListItems = new List<(int Start, int CurrentNumber, List<object> ListItems)>();
             int previousLevels = 0;
             int currentLevels = 0;
             int currentNumber = 0;
@@ -384,8 +385,7 @@ namespace OpenXmlPowerTools
                 var listType = (string)element.Attribute(PtOpenXml.HtmlStructure);
 
                 var elementHtml = ConvertToHtmlTransform(wordDoc, settings, element, suppressTrailingWhiteSpace && elementIndex != elements.Count - 1, currentMarginLeft);
-                var elementXml = elementHtml as XElement;
-                if (elementXml == null)
+                if (!(elementHtml is XElement elementXml))
                 {
                     // TODO: determine if we need to handle this
                     continue;
@@ -414,8 +414,9 @@ namespace OpenXmlPowerTools
                             // We are now at a shallower nesting, add the deeper list to the shallower list as content.
                             // Note that this creates invalid HTML where a list is directly nested inside another list without a list item "li" tag,
                             // but Microsoft Word HTML export has the same behaviour.
-                            var (_, _, _, shallowList) = htmlNestedListItems[levelIndex - 1];
-                            var (deepListType, deepStart, _, deepList) = htmlNestedListItems[levelIndex];
+                            var (_, _, shallowList) = htmlNestedListItems[levelIndex - 1];
+                            var (deepStart, _, deepList) = htmlNestedListItems[levelIndex];
+                            var deepListType = htmlNestedListTypes[levelIndex];
                             var startAttribute = deepListType == "ol" ? new XAttribute("start", deepStart) : null;
                             shallowList.Add(new XElement(Xhtml.xhtml + deepListType, startAttribute, deepList));
                             htmlNestedListItems.RemoveAt(levelIndex);
@@ -430,11 +431,16 @@ namespace OpenXmlPowerTools
                             currentNumber = start;
                             if (levelIndex >= htmlNestedListItems.Count)
                             {
-                                htmlNestedListItems.Add((listType, start, start, new List<object>()));
+                                htmlNestedListItems.Add((start, start, new List<object>()));
+                            }
+
+                            if (levelIndex >= htmlNestedListTypes.Count)
+                            {
+                                htmlNestedListTypes.Add(listType);
                             }
                         }
 
-                        (_, currentStart, _, appendToList) = htmlNestedListItems[currentLevels - 1];
+                        (currentStart, _, appendToList) = htmlNestedListItems[currentLevels - 1];
                     }
 
                     child.Remove();
@@ -443,7 +449,8 @@ namespace OpenXmlPowerTools
                 if (appendToList != null)
                 {
                     appendToList.Add(new XElement(Xhtml.li, elementHtml));
-                    htmlNestedListItems[currentLevels - 1] = (listType, currentStart, currentNumber, appendToList);
+                    htmlNestedListTypes[currentLevels - 1] = listType;
+                    htmlNestedListItems[currentLevels - 1] = (currentStart, currentNumber, appendToList);
                     previousLevels = currentLevels;
                 }
             }
@@ -452,7 +459,8 @@ namespace OpenXmlPowerTools
             for (int levelIndex = htmlNestedListItems.Count - 1; levelIndex >= 0; levelIndex -= 1)
             {
                 var list = levelIndex == 0 ? rootList : htmlNestedListItems[levelIndex - 1].ListItems;
-                var (deepListType, deepStart, _, deepList) = htmlNestedListItems[levelIndex];
+                var (deepStart, _, deepList) = htmlNestedListItems[levelIndex];
+                var deepListType = htmlNestedListTypes[levelIndex];
                 var startAttribute = deepListType == "ol" ? new XAttribute("start", deepStart) : null;
                 list.Add(new XElement(Xhtml.xhtml + deepListType, startAttribute, deepList));
                 htmlNestedListItems.RemoveAt(levelIndex);
@@ -2638,6 +2646,7 @@ namespace OpenXmlPowerTools
 
         private static object CreateBorderDivs(WordprocessingDocument wordDoc, WmlToHtmlConverterSettings settings, IEnumerable<XElement> elements)
         {
+            var htmlNestedListTypes = new List<string>();
             return elements.GroupAdjacent(e =>
                 {
                     var pBdr = e.Elements(W.pPr).Elements(W.pBdr).FirstOrDefault();
@@ -2655,7 +2664,7 @@ namespace OpenXmlPowerTools
                 {
                     if (g.Key == string.Empty)
                     {
-                        return (object)GroupAndVerticallySpaceNumberedParagraphs(wordDoc, settings, g, 0m);
+                        return (object)GroupAndVerticallySpaceNumberedParagraphs(wordDoc, settings, g, 0m, htmlNestedListTypes);
                     }
                     if (g.Key == "table")
                     {
@@ -2684,15 +2693,19 @@ namespace OpenXmlPowerTools
                     }
 
                     var div = new XElement(Xhtml.div,
-                        GroupAndVerticallySpaceNumberedParagraphs(wordDoc, settings, g, currentMarginLeft));
+                        GroupAndVerticallySpaceNumberedParagraphs(wordDoc, settings, g, currentMarginLeft, htmlNestedListTypes));
                     div.AddAnnotation(style);
                     return div;
                 })
             .ToList();
         }
 
-        private static IEnumerable<object> GroupAndVerticallySpaceNumberedParagraphs(WordprocessingDocument wordDoc, WmlToHtmlConverterSettings settings,
-            IEnumerable<XElement> elements, decimal currentMarginLeft)
+        private static IEnumerable<object> GroupAndVerticallySpaceNumberedParagraphs(
+            WordprocessingDocument wordDoc,
+            WmlToHtmlConverterSettings settings,
+            IEnumerable<XElement> elements,
+            decimal currentMarginLeft,
+            IList<string> htmlNestedListTypes)
         {
             var grouped = elements
                 .GroupAdjacent(e =>
@@ -2712,13 +2725,13 @@ namespace OpenXmlPowerTools
                 })
                 .ToList();
             var newContent = grouped
-                .Select(g =>
-                {
-                    if (g.Key == "")
-                        return g.Select(e => ConvertToHtmlTransform(wordDoc, settings, e, false, currentMarginLeft));
+                  .Select(g =>
+                  {
+                      if (g.Key == "")
+                          return g.Select(e => ConvertToHtmlTransform(wordDoc, settings, e, false, currentMarginLeft));
 
-                    return ListAwareConvertToHtmlTransform(wordDoc, settings, g, true, currentMarginLeft);
-                });
+                      return ListAwareConvertToHtmlTransform(wordDoc, settings, g, true, currentMarginLeft, htmlNestedListTypes);
+                  });
             return (IEnumerable<object>)newContent;
         }
 
