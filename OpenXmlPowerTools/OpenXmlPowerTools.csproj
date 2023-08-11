@@ -1,6 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;net472</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;net48</TargetFrameworks>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<RepositoryUrl>https://github.com/Codeuctivity/OpenXmlPowerTools</RepositoryUrl>
@@ -11,13 +11,12 @@
 		<Version Condition="'$(CURRENT_VERSION)' == ''">0.0.1</Version>
 		<AssemblyVersion>$(Version)</AssemblyVersion>
 		<FileVersion>$(Version)</FileVersion>
-		<PackageVersion>$(Version)-Prerelease</PackageVersion>
+		<PackageVersion>$(Version)</PackageVersion>
 		<PackageReleaseNotes>$(LAST_COMMIT_MESSAGE)</PackageReleaseNotes>
 		<PackageIcon>NugetIcon.png</PackageIcon>
 		<PackageProjectUrl>https://github.com/Codeuctivity/OpenXmlPowerTools</PackageProjectUrl>
 		<Description>The Open XML SDK provides tools for working with Office Word, Excel, and PowerPoint documents. This fork supports current .net versions.</Description>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<AssemblyOriginatorKeyFile>OpenXmlPowerTools.snk</AssemblyOriginatorKeyFile>
 		<SignAssembly>true</SignAssembly>
 		<IncludeSymbols>true</IncludeSymbols>
@@ -48,14 +47,16 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="SixLabors.ImageSharp.Drawing" Version="1.0.0-beta15" />
-		<PackageReference Include="SonarAnalyzer.CSharp" Version="9.5.0.73987">
+		<PackageReference Include="SixLabors.Fonts" Version="1.0.0" />
+		<PackageReference Include="SixLabors.ImageSharp" Version="2.1.4" />
+		<PackageReference Include="SonarAnalyzer.CSharp" Version="9.7.0.75501">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
 	<ItemGroup Condition="$(TargetFramework.StartsWith('net4'))">
 		<PackageReference Include="System.IO.Packaging" Version="7.0.0" />
+		<PackageReference Include="System.IO.Compression" Version="4.3.0" />
 	  </ItemGroup>
 	<ItemGroup>
 		<None Include="NugetIcon.png" Pack="true" PackagePath="\" />

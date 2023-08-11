@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.IO.Packaging;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
@@ -113,7 +112,7 @@ namespace Codeuctivity.OpenXmlPowerTools
             {
                 var font = new SixLabors.Fonts.Font(ff, (float)sz / 2f, fs);
                 var textOptions = new SixLabors.Fonts.TextOptions(font);
-                var size = SixLabors.Fonts.TextMeasurer.Measure(text, textOptions);
+                var size = SixLabors.Fonts.TextMeasurer.MeasureSize(text, textOptions);
 
                 return (int)size.Width;
             }
