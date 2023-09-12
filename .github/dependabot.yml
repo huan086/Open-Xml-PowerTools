@@ -28,6 +28,8 @@ updates:
     schedule:
       interval: "daily"
     ignore:
+      - dependency-name: "SixLabors.ImageSharp"
+        versions: ["3.x", "4.x"]
       - dependency-name: "coverlet.collector"
       - dependency-name: "Codeuctivity.HtmlRenderer"
       - dependency-name: "nunit"
