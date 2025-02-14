@@ -33,7 +33,7 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
 
             var isBidi = paragraph != null && paragraph.Elements(W.pPr).Elements(W.bidi).Any(b => b.Attribute(W.val) == null || b.Attribute(W.val).ToBoolean() == true);
 
-            var zeroWidthChar = isBidi ? new XEntity("#x200f") : new XEntity("#x200e");
+            var zeroWidthChar = isBidi ? new XText("\u200f") : new XText("\u200e");
             return new XNode[] { new XElement(Xhtml.br), zeroWidthChar, span };
         }
     }

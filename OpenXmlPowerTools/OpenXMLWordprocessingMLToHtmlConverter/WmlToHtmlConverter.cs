@@ -696,7 +696,7 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
             }
             else
             {
-                span = new XElement(Xhtml.span, new XEntity("#x00a0"));
+                span = new XElement(Xhtml.span, new XText("\u00a0")); // No-Break Space
                 style.Add("margin", string.Format(NumberFormatInfo.InvariantInfo, "0 0 0 {0:0.00}in", tabWidth));
                 style.Add("padding", "0 0 0 0");
             }
@@ -1144,7 +1144,7 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
         {
             var style = DefineParagraphStyle(paragraph, elementName, suppressTrailingWhiteSpace, currentMarginLeft, isBidi, settings.FontHandler);
             var rtl = isBidi ? new XAttribute("dir", "rtl") : new XAttribute("dir", "ltr");
-            var firstMark = isBidi ? new XEntity("#x200f") : null;
+            var firstMark = isBidi ? new XText("\u200f") : null;
 
             // Analyze initial runs to see whether we have a tab, in which case we will render a span with a defined width and ignore the tab rather than rendering the text preceding the tab and the tab as a span with a computed width.
             var firstTabRun = paragraph.Elements(W.r).FirstOrDefault(run => run.Elements(W.tab).Any());
@@ -1670,7 +1670,7 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
             return languageType == "bidi" ? (decimal?)rPr.Elements(W.szCs).Attributes(W.val).FirstOrDefault() : (decimal?)rPr.Elements(W.sz).Attributes(W.val).FirstOrDefault();
         }
 
-        private static void DetermineRunMarks(XElement run, XElement rPr, Dictionary<string, string> style, out XEntity? runStartMark, out XEntity? runEndMark)
+        private static void DetermineRunMarks(XElement run, XElement rPr, Dictionary<string, string> style, out XText? runStartMark, out XText? runEndMark)
         {
             runStartMark = null;
             runEndMark = null;
@@ -1695,8 +1695,8 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
             var isRtl = rPr.Element(W.rtl) != null;
             if (isRtl)
             {
-                runStartMark = new XEntity("#x200f"); // RLM
-                runEndMark = new XEntity("#x200f"); // RLM
+                runStartMark = new XText("\u200f"); // RLM
+                runEndMark = new XText("\u200f"); // RLM
             }
             else
             {
@@ -1708,8 +1708,8 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
 
                 if (paraIsBidi)
                 {
-                    runStartMark = new XEntity("#x200e"); // LRM
-                    runEndMark = new XEntity("#x200e"); // LRM
+                    runStartMark = new XText("\u200e"); // LRM
+                    runEndMark = new XText("\u200e"); // LRM
                 }
             }
         }

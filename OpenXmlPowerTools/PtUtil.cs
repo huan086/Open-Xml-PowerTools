@@ -1518,26 +1518,6 @@ namespace Codeuctivity.OpenXmlPowerTools
         }
     }
 
-    public class XEntity : XText
-    {
-        public override void WriteTo(XmlWriter writer)
-        {
-            if (Value.Substring(0, 1) == "#")
-            {
-                var e = string.Format("&{0};", Value);
-                writer.WriteRaw(e);
-            }
-            else
-            {
-                writer.WriteEntityRef(Value);
-            }
-        }
-
-        public XEntity(string value) : base(value)
-        {
-        }
-    }
-
     public static class Xsi
     {
         public static readonly XNamespace xsi = "http://www.w3.org/2001/XMLSchema-instance";
