@@ -17,9 +17,11 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
         /// <returns></returns>
         public XElement TransformSymbol(XElement element, Dictionary<string, string> fontFamily)
         {
-            var cs = (string)element.Attribute(W._char);
-            var c = Convert.ToInt32(cs, 16);
-            return new XElement(Xhtml.span, new XEntity(string.Format("#{0}", c)));
+            var cs = (string?)element.Attribute(W._char);
+            string character = !string.IsNullOrEmpty(cs)
+                ? Convert.ToChar(Convert.ToUInt16(cs, 16)).ToString()
+                : "\ufffd"; // Replacement character
+            return new XElement(Xhtml.span, new XText(character));
         }
     }
 }
