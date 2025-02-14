@@ -491,6 +491,12 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
                 return ProcessHyperlinkToBookmark(wordDoc, settings, element);
             }
 
+            // Transform alternate content, selecting a choice that we support.
+            if (element.Name == MC.AlternateContent)
+            {
+                return ProcessAlternateContent(wordDoc, settings, element);
+            }
+
             // Transform contents of runs.
             if (element.Name == W.r)
             {
@@ -1525,6 +1531,23 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
                 content = xe;
             }
             return content;
+        }
+
+        private static object? ProcessAlternateContent(WordprocessingDocument wordDoc, WmlToHtmlConverterSettings settings, XElement element)
+        {
+            foreach (var choice in element.Elements(MC.Choice).Concat(element.Elements(MC.Fallback)))
+            {
+                var childElements = choice.Elements()
+                    .Select(child => ConvertToHtmlTransform(wordDoc, settings, child, false, 0m))
+                    .Where(htmlElement => htmlElement != null)
+                    .ToList();
+                if (childElements.Count > 0)
+                {
+                    return childElements;
+                }
+            }
+
+            return null;
         }
 
         private static Dictionary<string, string> DefineRunStyle(XElement run, IFontHandler fontHandler)
