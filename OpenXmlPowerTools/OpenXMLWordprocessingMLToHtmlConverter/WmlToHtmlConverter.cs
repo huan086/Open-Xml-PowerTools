@@ -569,6 +569,12 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
                 return CreateBorderDivs(wordDoc, settings, element.Elements());
             }
 
+            // Transform alternate content, selecting a choice that we support.
+            if (element.Name == MC.AlternateContent)
+            {
+                return ProcessAlternateContent(wordDoc, settings, element);
+            }
+
             // Ignore element.
             return null;
         }
@@ -2881,6 +2887,23 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
                     return g.Select((e, i) => ConvertToHtmlTransform(wordDoc, settings, e, i != last, currentMarginLeft));
                 });
             return newContent;
+        }
+
+        private static object? ProcessAlternateContent(WordprocessingDocument wordDoc, WmlToHtmlConverterSettings settings, XElement element)
+        {
+            foreach (var choice in element.Elements(MC.Choice).Concat(element.Elements(MC.Fallback)))
+            {
+                var childElements = choice.Elements()
+                    .Select(child => ConvertToHtmlTransform(wordDoc, settings, child, false, 0m))
+                    .Where(htmlElement => htmlElement != null)
+                    .ToList();
+                if (childElements.Count > 0)
+                {
+                    return childElements;
+                }
+            }
+
+            return null;
         }
 
         private class BorderMappingInfo
