@@ -3494,9 +3494,25 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
 
         private static XElement? ProcessPictureOrObject(WordprocessingDocument wordDoc, XElement element, IImageHandler imageHandler)
         {
-            var imageRid = (string)element.Elements(VML.shape).Elements(VML.imagedata).Attributes(R.id).FirstOrDefault();
+            var imageRid = (string?)element.Elements(VML.shape).Elements(VML.imagedata).Attributes(R.id).FirstOrDefault();
             if (imageRid == null)
             {
+                // Check if this is horizontal line
+                var rects = element.Elements(VML.rect).Take(2).ToList();
+                if (rects.Count == 1)
+                {
+                    var rect = rects[0];
+                    var horizontal = (string?)rect.Attribute(O.hr);
+                    var horizontalStandard = (string?)rect.Attribute(O.hrstd);
+                    if (horizontal != null
+                        && horizontal == "t"
+                        && horizontalStandard != null
+                        && horizontalStandard == "t")
+                    {
+                        return new XElement(Xhtml.hr);
+                    }
+                }
+
                 return null;
             }
 
