@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Globalization;
 using System.Xml.Linq;
 
 namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
@@ -17,9 +17,11 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
         /// <returns></returns>
         public XElement TransformSymbol(XElement element, Dictionary<string, string> fontFamily)
         {
-            var cs = (string)element.Attribute(W._char);
-            var c = Convert.ToInt32(cs, 16);
-            return new XElement(Xhtml.span, new XEntity(string.Format("#{0}", c)));
+            var cs = (string?)element.Attribute(W._char);
+            char character = uint.TryParse(cs, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out uint number)
+                ? (char)number
+                : '\ufffd'; // Replacement character
+            return new XElement(Xhtml.span, new XText(character.ToString()));
         }
     }
 }

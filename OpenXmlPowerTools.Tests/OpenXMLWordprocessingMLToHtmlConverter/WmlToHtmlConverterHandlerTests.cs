@@ -71,7 +71,7 @@ namespace Codeuctivity.Tests.OpenXMLWordProcessingMLToHtmlConverter
 
             var actual = defaultSymbolHandler.TransformSymbol(element, fontFamily);
 
-            Assert.Equal("<span xmlns=\"http://www.w3.org/1999/xhtml\">&#10;</span>", actual.ToString());
+            Assert.Equal("<span xmlns=\"http://www.w3.org/1999/xhtml\">" + Environment.NewLine + "</span>", actual.ToString());
         }
 
         [Fact]
@@ -85,7 +85,7 @@ namespace Codeuctivity.Tests.OpenXMLWordProcessingMLToHtmlConverter
 
             Assert.Equal(3, actual.Count());
             Assert.Equal("<br xmlns=\"http://www.w3.org/1999/xhtml\" />", actual.ElementAt(0).ToString());
-            Assert.Equal("&#x200e;", actual.ElementAt(1).ToString());
+            Assert.Equal("\u200e", actual.ElementAt(1).ToString());
             Assert.Null(actual.ElementAt(2));
         }
 
