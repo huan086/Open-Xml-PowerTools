@@ -59,14 +59,14 @@ jobs:
           NUGET_TOKEN_EXISTS: ${{ secrets.NUGET_TOKEN }}
         if: env.NUGET_TOKEN_EXISTS != ''
         run: |
-          dotnet nuget push ./OpenXmlPowerTools/bin/Release/*.nupkg --skip-duplicate --api-key ${{secrets.NUGET_TOKEN}} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push *.nupkg --skip-duplicate --api-key ${{secrets.NUGET_TOKEN}} --source https://api.nuget.org/v3/index.json
       - name: Github Release
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.TOKEN }}
         if: env.GITHUB_TOKEN != ''
         run: |
-          gh release create ${{env.CURRENT_VERSION}} ./OpenXmlPowerTools/bin/Release/*.*nupkg --generate-notes
+          gh release create ${{env.CURRENT_VERSION}} *.*nupkg --generate-notes
 
   deployTest:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -84,11 +84,11 @@ jobs:
         if: env.NUGET_TOKEN_EXISTS != ''
         run: |
           ls ./OpenXmlPowerTools/bin/Release
-          dotnet nuget push ./OpenXmlPowerTools/bin/Release/*.nupkg --skip-duplicate --api-key ${{secrets.NUGET_TEST_TOKEN}} --source https://apiint.nugettest.org/v3/index.json
+          dotnet nuget push *.nupkg --skip-duplicate --api-key ${{secrets.NUGET_TEST_TOKEN}} --source https://apiint.nugettest.org/v3/index.json
       - name: Github Prerelease
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.TOKEN }}
         if: env.GITHUB_TOKEN != ''
         run: |
-          gh release create ${{env.CURRENT_VERSION}} ./OpenXmlPowerTools/bin/Release/*.*nupkg  --prerelease --generate-notes
+          gh release create ${{env.CURRENT_VERSION}} *.*nupkg  --prerelease --generate-notes
