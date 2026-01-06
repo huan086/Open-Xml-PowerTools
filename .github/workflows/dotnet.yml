@@ -9,6 +9,9 @@ on:
 
 jobs:
   build:
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -27,6 +30,13 @@ jobs:
         run: dotnet build --configuration Release --no-restore
       - name: Test
         run: dotnet test --no-build --verbosity normal --configuration Release --logger "trx;LogFileName=${{ runner.workspace }}/OpenXmlPowerTools/TestResult/test_results.trx"
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v6
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: build-artifacts
+          path: |
+            OpenXmlPowerTools/bin/Release/
       - name: Publish Unit Test Results
         uses: actions/upload-artifact@v6
         if: failure()
@@ -40,16 +50,10 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v6
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+      - name: Download build artifacts
+        uses: actions/download-artifact@v6
         with:
-          dotnet-version: |
-            8.0.x
-            10.0.x
-      - name: Restore dependencies
-        run: dotnet restore
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
+          name: build-artifacts
       - name: NugetPush
         env:
           NUGET_TOKEN_EXISTS: ${{ secrets.NUGET_TOKEN }}
@@ -70,16 +74,10 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v6
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+      - name: Download build artifacts
+        uses: actions/download-artifact@v6
         with:
-          dotnet-version: |
-            8.0.x
-            10.0.x
-      - name: Restore dependencies
-        run: dotnet restore
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
+          name: build-artifacts
       - name: NugetPush
         env:
           NUGET_TOKEN_EXISTS: ${{ secrets.NUGET_TEST_TOKEN }}
@@ -87,7 +85,6 @@ jobs:
         run: |
           ls ./OpenXmlPowerTools/bin/Release
           dotnet nuget push ./OpenXmlPowerTools/bin/Release/*.nupkg --skip-duplicate --api-key ${{secrets.NUGET_TEST_TOKEN}} --source https://apiint.nugettest.org/v3/index.json
-
       - name: Github Prerelease
         shell: bash
         env:
