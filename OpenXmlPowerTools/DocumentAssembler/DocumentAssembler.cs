@@ -873,15 +873,17 @@ namespace Codeuctivity.OpenXmlPowerTools
                     }
                     return null;
                 }
-                var transformedNodes = element.Nodes().Select(n => ContentReplacementTransform(n, data, asmResult, owningPart));
+                var transformedNodes = element.Nodes().Select(n => ContentReplacementTransform(n, data, templateError, owningPart));
                 if (element.Name == W.tc)
                 {
-                    // Check if the table cell contains any paragraph elements
+                    // Check if the table cell contains any block-level elements
+                    // Valid block-level elements in a table cell: p (paragraph), tbl (table), sdt (structured document tag), customXml
                     var nodesList = transformedNodes.ToList();
-                    var hasParagraph = nodesList.Any(n => n is XElement xe && xe.Name == W.p);
-                    if (!hasParagraph)
+                    var hasBlockLevelContent = nodesList.Any(n => n is XElement xe && 
+                        (xe.Name == W.p || xe.Name == W.tbl || xe.Name == W.sdt || xe.Name == W.customXml));
+                    if (!hasBlockLevelContent)
                     {
-                        // avoid empty table cells, which are invalid -- add an empty paragraph back in
+                        // Table cells must contain at least one block-level element -- add an empty paragraph
                         nodesList.Add(new XElement(W.p));
                     }
                     transformedNodes = nodesList;
