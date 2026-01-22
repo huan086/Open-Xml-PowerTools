@@ -654,7 +654,7 @@ namespace Codeuctivity.OpenXmlPowerTools
                             p.Add(new XElement(W.r,
                                     para.Elements(W.r).Elements(W.rPr).FirstOrDefault(),
                                 (p.Elements().Count() > 1) ? new XElement(W.br) : null,
-                                new XElement(W.t, line)));
+                                new XElement(W.t, GetXmlSpaceAttribute(line), line)));
                         }
                         return p;
                     }
@@ -666,7 +666,7 @@ namespace Codeuctivity.OpenXmlPowerTools
                             list.Add(new XElement(W.r,
                                 run.Elements().Where(e => e.Name != W.t),
                                 (list.Count > 0) ? new XElement(W.br) : null,
-                                new XElement(W.t, line)));
+                                new XElement(W.t, GetXmlSpaceAttribute(line), line)));
                         }
                         return list;
                     }
@@ -1414,6 +1414,19 @@ namespace Codeuctivity.OpenXmlPowerTools
             }
 
             return xPathSelectResult.ToString();
+        }
+
+        private static XAttribute GetXmlSpaceAttribute(string textOfTextElement)
+        {
+            if (!string.IsNullOrEmpty(textOfTextElement))
+            {
+                if (char.IsWhiteSpace(textOfTextElement[0]) ||
+                    char.IsWhiteSpace(textOfTextElement[textOfTextElement.Length - 1]))
+                {
+                    return new XAttribute(XNamespace.Xml + "space", "preserve");
+                }
+            }
+            return null;
         }
     }
 }
