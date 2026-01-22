@@ -206,14 +206,14 @@ Line 2!
         {
             var sourceDir = new System.IO.DirectoryInfo("../../../../TestFiles/");
             // Test document: crafted to include many whitespace patterns that Word accepts as valid input
-            var testDoc = new System.IO.FileInfo(System.IO.Path.Combine(sourceDir.FullName, "UM-whitespace-test.docx"));
+            var testDoc = new System.IO.FileInfo(System.IO.Path.Combine(sourceDir.FullName, "UM-Whitespace-test.docx"));
             var testWmlDoc = new WmlDocument(testDoc.FullName);
             var testParagraphs = testWmlDoc.MainDocumentPart
                             .Element(W.body)
                             .Elements(W.p).ToList();
             // Canonical document: the same test document after being opened and saved by Word,
-            // representing Word’s own normalized interpretation of that whitespace
-            var expectedDoc = new System.IO.FileInfo(System.IO.Path.Combine(sourceDir.FullName, "UM-whitespace-Word-saved.docx"));
+            // representing Word's own normalized interpretation of that whitespace
+            var expectedDoc = new System.IO.FileInfo(System.IO.Path.Combine(sourceDir.FullName, "UM-Whitespace-Word-saved.docx"));
             var expectedWmlDoc = new WmlDocument(expectedDoc.FullName);
             var expectedParagraphs = expectedWmlDoc.MainDocumentPart
                             .Element(W.body)
