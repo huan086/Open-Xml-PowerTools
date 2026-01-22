@@ -873,9 +873,24 @@ namespace Codeuctivity.OpenXmlPowerTools
                     }
                     return null;
                 }
+                var transformedNodes = element.Nodes().Select(n => ContentReplacementTransform(n, data, templateError, owningPart));
+                if (element.Name == W.tc)
+                {
+                    // Check if the table cell contains any block-level elements
+                    // Valid block-level elements in a table cell: p (paragraph), tbl (table), sdt (structured document tag), customXml
+                    var nodesList = transformedNodes.ToList();
+                    var hasBlockLevelContent = nodesList.Any(n => n is XElement xe && 
+                        (xe.Name == W.p || xe.Name == W.tbl || xe.Name == W.sdt || xe.Name == W.customXml));
+                    if (!hasBlockLevelContent)
+                    {
+                        // Table cells must contain at least one block-level element -- add an empty paragraph
+                        nodesList.Add(new XElement(W.p));
+                    }
+                    transformedNodes = nodesList;
+                }
                 return new XElement(element.Name,
                     element.Attributes(),
-                    element.Nodes().Select(n => ContentReplacementTransform(n, data, templateError, owningPart)));
+                    transformedNodes);
             }
             return node;
         }
