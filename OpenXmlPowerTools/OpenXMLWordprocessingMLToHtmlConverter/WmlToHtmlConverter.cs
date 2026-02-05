@@ -1,4 +1,4 @@
-﻿using Codeuctivity.OpenXmlPowerTools.FontMetric;
+using Codeuctivity.OpenXmlPowerTools.FontMetric;
 using DocumentFormat.OpenXml.Packaging;
 using SkiaSharp;
 using System;
@@ -964,11 +964,11 @@ namespace Codeuctivity.OpenXmlPowerTools.OpenXMLWordprocessingMLToHtmlConverter
             decimal currentMarginLeft)
         {
             var style = new Dictionary<string, string>();
-            var trHeight = (int?)element.Elements(W.trPr).Elements(W.trHeight).Attributes(W.val).FirstOrDefault();
-            if (trHeight != null)
+            var trHeightValue = element.Elements(W.trPr).Elements(W.trHeight).Attributes(W.val).FirstOrDefault()?.Value;
+            if (decimal.TryParse(trHeightValue, out decimal trHeight))
             {
                 style.AddIfMissing("height",
-                    string.Format(NumberFormatInfo.InvariantInfo, "{0:0.00}in", (decimal)trHeight / 1440m));
+                    string.Format(NumberFormatInfo.InvariantInfo, "{0:0.00}in", trHeight / 1440m));
             }
 
             var htmlRow = new XElement(Xhtml.tr,
